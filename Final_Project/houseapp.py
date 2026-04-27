@@ -14,20 +14,17 @@ st.set_page_config(
     layout="wide"
 )
 
-# ===============================
-# SAFE PATH BASE
-# ===============================
 BASE_DIR = os.path.dirname(__file__)
 
 # ===============================
-# SAFE LOAD MODEL
+# LOAD MODEL (SAFE)
 # ===============================
 @st.cache_resource
 def load_model():
     model_path = os.path.join(BASE_DIR, "house_price_model.pkl")
-    
+
     if not os.path.exists(model_path):
-        st.error("❌ Model file not found!")
+        st.error("❌ Model file missing!")
         st.stop()
 
     with open(model_path, "rb") as f:
@@ -36,19 +33,37 @@ def load_model():
 model = load_model()
 
 # ===============================
-# SAFE LOAD DATA
+# LOAD DATA (SAFE)
 # ===============================
 @st.cache_data
 def load_data():
-    data_path = os.path.join(BASE_DIR, "housing.csv")  # FIXED (was data.csv)
+    data_path = os.path.join(BASE_DIR, "housing.csv")
 
     if not os.path.exists(data_path):
-        st.error("❌ Data file not found!")
+        st.error("❌ Dataset file missing!")
         st.stop()
 
-    return pd.read_csv(data_path)
+    df = pd.read_csv(data_path)
+
+    # CLEAN COLUMN NAMES
+    df.columns = df.columns.str.strip().str.lower()
+
+    return df
 
 df = load_data()
+
+# ===============================
+# AUTO DETECT PRICE COLUMN
+# ===============================
+price_col = None
+for col in df.columns:
+    if "price" in col:
+        price_col = col
+        break
+
+if price_col is None:
+    st.error("❌ No price column found in dataset!")
+    st.stop()
 
 # ===============================
 # HEADER
@@ -68,14 +83,14 @@ st.divider()
 col1, col2, col3, col4 = st.columns(4)
 
 col1.metric("📊 Dataset", len(df))
-col2.metric("🏠 Avg Price", f"${df['price'].mean():,.0f}")
+col2.metric("🏠 Avg Price", f"${df[price_col].mean():,.0f}")
 col3.metric("📏 Avg Size", f"{df['sqft_living'].mean():,.0f} sqft")
 col4.metric("🧠 Model", "AI ML")
 
 st.divider()
 
 # ===============================
-# SIDEBAR
+# SIDEBAR INPUT
 # ===============================
 st.sidebar.title("🔧 Predict House Price")
 
@@ -83,7 +98,7 @@ sqft = st.sidebar.slider("Select House Size", 300, 10000, 1500)
 predict = st.sidebar.button("🚀 Predict Now")
 
 # ===============================
-# MAIN LOGIC
+# MAIN
 # ===============================
 if predict:
 
@@ -98,27 +113,34 @@ if predict:
     st.divider()
 
     # ===============================
-    # GRAPH SAFETY CHECK
+    # GRAPH 1
     # ===============================
-    if "sqft_living" in df.columns and "price" in df.columns:
+    st.subheader("📊 Market Overview")
 
-        st.subheader("📊 Market Overview")
-        fig, ax = plt.subplots()
-        ax.scatter(df["sqft_living"], df["price"], alpha=0.4)
-        ax.set_xlabel("House Size")
-        ax.set_ylabel("Price")
-        st.pyplot(fig)
+    fig, ax = plt.subplots()
+    ax.scatter(df["sqft_living"], df[price_col], alpha=0.4)
+    ax.set_xlabel("House Size")
+    ax.set_ylabel("Price")
+    st.pyplot(fig)
 
-        st.subheader("🎯 Your Property Position")
-        fig, ax = plt.subplots()
-        ax.scatter(df["sqft_living"], df["price"], alpha=0.3)
-        ax.scatter([sqft], [prediction], color="red", s=120)
-        st.pyplot(fig)
+    # ===============================
+    # GRAPH 2
+    # ===============================
+    st.subheader("🎯 Your Property Position")
 
-        st.subheader("📉 Price Distribution")
-        fig, ax = plt.subplots()
-        ax.hist(df["price"], bins=30)
-        st.pyplot(fig)
+    fig, ax = plt.subplots()
+    ax.scatter(df["sqft_living"], df[price_col], alpha=0.3)
+    ax.scatter([sqft], [prediction], color="red", s=120)
+    st.pyplot(fig)
+
+    # ===============================
+    # GRAPH 3
+    # ===============================
+    st.subheader("📉 Price Distribution")
+
+    fig, ax = plt.subplots()
+    ax.hist(df[price_col], bins=30)
+    st.pyplot(fig)
 
     # ===============================
     # DOWNLOAD RESULT
@@ -141,8 +163,8 @@ if predict:
     st.info("""
     📌 Insights:
     - Larger homes → higher prices  
-    - Model captures linear trend  
-    - Real estate AI prediction active  
+    - AI model detects real estate trends  
+    - SaaS dashboard fully active  
     """)
 
 else:
