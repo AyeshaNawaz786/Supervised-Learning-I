@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
 # ===============================
 # CONFIG
@@ -14,11 +15,22 @@ st.set_page_config(
 )
 
 # ===============================
+# SAFE PATH BASE
+# ===============================
+BASE_DIR = os.path.dirname(__file__)
+
+# ===============================
 # SAFE LOAD MODEL
 # ===============================
 @st.cache_resource
 def load_model():
-    with open("house_price_model.pkl", "rb") as f:
+    model_path = os.path.join(BASE_DIR, "house_price_model.pkl")
+    
+    if not os.path.exists(model_path):
+        st.error("❌ Model file not found!")
+        st.stop()
+
+    with open(model_path, "rb") as f:
         return pickle.load(f)
 
 model = load_model()
@@ -28,7 +40,13 @@ model = load_model()
 # ===============================
 @st.cache_data
 def load_data():
-    return pd.read_csv("data.csv")
+    data_path = os.path.join(BASE_DIR, "housing.csv")  # FIXED (was data.csv)
+
+    if not os.path.exists(data_path):
+        st.error("❌ Data file not found!")
+        st.stop()
+
+    return pd.read_csv(data_path)
 
 df = load_data()
 
@@ -65,7 +83,7 @@ sqft = st.sidebar.slider("Select House Size", 300, 10000, 1500)
 predict = st.sidebar.button("🚀 Predict Now")
 
 # ===============================
-# MAIN
+# MAIN LOGIC
 # ===============================
 if predict:
 
