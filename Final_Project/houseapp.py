@@ -3,7 +3,6 @@ import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
 
 # ===============================
 # CONFIG
@@ -14,56 +13,24 @@ st.set_page_config(
     layout="wide"
 )
 
-BASE_DIR = os.path.dirname(__file__)
-
 # ===============================
-# LOAD MODEL (SAFE)
+# SAFE LOAD MODEL
 # ===============================
 @st.cache_resource
 def load_model():
-    model_path = os.path.join(BASE_DIR, "house_price_model.pkl")
-
-    if not os.path.exists(model_path):
-        st.error("❌ Model file missing!")
-        st.stop()
-
-    with open(model_path, "rb") as f:
+    with open("house_price_model.pkl", "rb") as f:
         return pickle.load(f)
 
 model = load_model()
 
 # ===============================
-# LOAD DATA (SAFE)
+# SAFE LOAD DATA
 # ===============================
 @st.cache_data
 def load_data():
-    data_path = os.path.join(BASE_DIR, "housing.csv")
-
-    if not os.path.exists(data_path):
-        st.error("❌ Dataset file missing!")
-        st.stop()
-
-    df = pd.read_csv(data_path)
-
-    # CLEAN COLUMN NAMES
-    df.columns = df.columns.str.strip().str.lower()
-
-    return df
+    return pd.read_csv("data.csv")
 
 df = load_data()
-
-# ===============================
-# AUTO DETECT PRICE COLUMN
-# ===============================
-price_col = None
-for col in df.columns:
-    if "price" in col:
-        price_col = col
-        break
-
-if price_col is None:
-    st.error("❌ No price column found in dataset!")
-    st.stop()
 
 # ===============================
 # HEADER
@@ -83,14 +50,14 @@ st.divider()
 col1, col2, col3, col4 = st.columns(4)
 
 col1.metric("📊 Dataset", len(df))
-col2.metric("🏠 Avg Price", f"${df[price_col].mean():,.0f}")
+col2.metric("🏠 Avg Price", f"${df['price'].mean():,.0f}")
 col3.metric("📏 Avg Size", f"{df['sqft_living'].mean():,.0f} sqft")
 col4.metric("🧠 Model", "AI ML")
 
 st.divider()
 
 # ===============================
-# SIDEBAR INPUT
+# SIDEBAR
 # ===============================
 st.sidebar.title("🔧 Predict House Price")
 
@@ -113,34 +80,27 @@ if predict:
     st.divider()
 
     # ===============================
-    # GRAPH 1
+    # GRAPH SAFETY CHECK
     # ===============================
-    st.subheader("📊 Market Overview")
+    if "sqft_living" in df.columns and "price" in df.columns:
 
-    fig, ax = plt.subplots()
-    ax.scatter(df["sqft_living"], df[price_col], alpha=0.4)
-    ax.set_xlabel("House Size")
-    ax.set_ylabel("Price")
-    st.pyplot(fig)
+        st.subheader("📊 Market Overview")
+        fig, ax = plt.subplots()
+        ax.scatter(df["sqft_living"], df["price"], alpha=0.4)
+        ax.set_xlabel("House Size")
+        ax.set_ylabel("Price")
+        st.pyplot(fig)
 
-    # ===============================
-    # GRAPH 2
-    # ===============================
-    st.subheader("🎯 Your Property Position")
+        st.subheader("🎯 Your Property Position")
+        fig, ax = plt.subplots()
+        ax.scatter(df["sqft_living"], df["price"], alpha=0.3)
+        ax.scatter([sqft], [prediction], color="red", s=120)
+        st.pyplot(fig)
 
-    fig, ax = plt.subplots()
-    ax.scatter(df["sqft_living"], df[price_col], alpha=0.3)
-    ax.scatter([sqft], [prediction], color="red", s=120)
-    st.pyplot(fig)
-
-    # ===============================
-    # GRAPH 3
-    # ===============================
-    st.subheader("📉 Price Distribution")
-
-    fig, ax = plt.subplots()
-    ax.hist(df[price_col], bins=30)
-    st.pyplot(fig)
+        st.subheader("📉 Price Distribution")
+        fig, ax = plt.subplots()
+        ax.hist(df["price"], bins=30)
+        st.pyplot(fig)
 
     # ===============================
     # DOWNLOAD RESULT
@@ -163,9 +123,9 @@ if predict:
     st.info("""
     📌 Insights:
     - Larger homes → higher prices  
-    - AI model detects real estate trends  
-    - SaaS dashboard fully active  
+    - Model captures linear trend  
+    - Real estate AI prediction active  
     """)
 
 else:
-    st.info("👈 Use sidebar to generate AI prediction")
+    st.info("👈 Use sidebar to generate AI prediction")                                          
