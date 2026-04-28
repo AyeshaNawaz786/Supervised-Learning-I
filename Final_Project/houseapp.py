@@ -5,13 +5,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # ===============================
-# CONFIG (STARTUP STYLE)
+# CONFIG
 # ===============================
-st.set_page_config(
-    page_title="AI Real Estate SaaS",
-    page_icon="🏡",
-    layout="wide"
-)
+st.set_page_config(page_title="AI Real Estate SaaS", page_icon="🏡", layout="wide")
 
 # ===============================
 # LOAD MODEL + DATA
@@ -19,95 +15,78 @@ st.set_page_config(
 model = pickle.load(open("house_price_model.pkl", "rb"))
 df = pd.read_csv("data.csv")
 
+# Same preprocessing
+df = df.drop(["date","street","city","statezip","country"], axis=1)
+X = df.drop("price", axis=1)
+
 # ===============================
-# LANDING HEADER (SAAS STYLE)
+# HEADER
 # ===============================
 st.markdown("""
-# 🏡 AI Real Estate Intelligence Platform  
-### Modern SaaS Dashboard for Property Price Prediction
-""")
+<h1 style='text-align: center;'>🏡 AI Real Estate Intelligence Platform</h1>
+<h4 style='text-align: center;'>Modern SaaS Dashboard</h4>
+""", unsafe_allow_html=True)
 
-st.success("🚀 Live AI System Project Ready")
+st.success("🚀 Live AI System Ready")
+st.divider()
+
+# ===============================
+# KPI
+# ===============================
+col1, col2, col3 = st.columns(3)
+col1.metric("Dataset", len(df))
+col2.metric("Avg Price", f"${df['price'].mean():,.0f}")
+col3.metric("Features", len(X.columns))
 
 st.divider()
 
 # ===============================
-# KPI CARDS (UBER/AIRBNB STYLE)
+# SIDEBAR INPUTS (AUTO GENERATE)
 # ===============================
-col1, col2, col3, col4 = st.columns(4)
+st.sidebar.title("🔧 Enter House Details")
 
-col1.metric("📊 Dataset", len(df))
-col2.metric("🏠 Avg Price", f"${df['price'].mean():,.0f}")
-col3.metric("📏 Avg Size", f"{df['sqft_living'].mean():,.0f} sqft")
-col4.metric("🧠 Model", "AI ML")
+input_data = []
 
-st.divider()
+for col in X.columns:
+    val = st.sidebar.slider(
+        col,
+        float(X[col].min()),
+        float(X[col].max()),
+        float(X[col].mean())
+    )
+    input_data.append(val)
 
-# ===============================
-# SIDEBAR INPUTS
-# ===============================
-st.sidebar.title("🔧 Predict House Price")
-
-sqft = st.sidebar.slider("Select House Size", 300, 10000, 1500)
-predict = st.sidebar.button("🚀 Predict Now")
+predict = st.sidebar.button("🚀 Predict")
 
 # ===============================
-# MAIN LOGIC
+# PREDICTION
 # ===============================
 if predict:
 
-    prediction = model.predict(np.array([[sqft]]))[0]
+    with st.spinner("🤖 AI is predicting..."):
+        prediction = model.predict([input_data])[0]
 
-    # ===========================
-    # RESULT CARDS
-    # ===========================
-    c1, c2, c3 = st.columns(3)
+    st.success(f"💰 Predicted Price: ${prediction:,.0f}")
 
-    c1.metric("📏 Size", f"{sqft} sqft")
-    c2.metric("💰 Price", f"${prediction:,.0f}")
-    c3.metric("📈 Status", "Predicted")
-
-    st.divider()
-
-    # ===========================
-    # GRAPH 1: MARKET VIEW
-    # ===========================
+    # Graph
     st.subheader("📊 Market Overview")
 
     fig, ax = plt.subplots()
     ax.scatter(df["sqft_living"], df["price"], alpha=0.4)
-    ax.set_xlabel("House Size")
-    ax.set_ylabel("Price")
     st.pyplot(fig)
 
-    # ===========================
-    # GRAPH 2: YOUR POINT
-    # ===========================
-    st.subheader("🎯 Your Property Position")
+    # Download
+    result_df = pd.DataFrame([input_data], columns=X.columns)
+    result_df["Prediction"] = prediction
 
-    fig, ax = plt.subplots()
-    ax.scatter(df["sqft_living"], df["price"], alpha=0.3)
-    ax.scatter([sqft], [prediction], color="red", s=120)
-    st.pyplot(fig)
+    csv = result_df.to_csv(index=False).encode("utf-8")
 
-    # ===========================
-    # GRAPH 3: PRICE DISTRIBUTION
-    # ===========================
-    st.subheader("📉 Price Distribution")
-
-    fig, ax = plt.subplots()
-    ax.hist(df["price"], bins=30)
-    st.pyplot(fig)
-
-    # ===========================
-    # INSIGHT BOX
-    # ===========================
-    st.info("""
-    📌 Insights:
-    - Larger homes → higher prices  
-    - Data shows linear market trend  
-    - AI model captures real estate patterns  
-    """)
+    st.download_button(
+        "📥 Download Result",
+        csv,
+        "prediction.csv",
+        "text/csv"
+    )
 
 else:
-    st.info("👈 Use sidebar to generate AI prediction")                                              is ma agr add krni ha to kr do
+    st.info("👈 Enter values from sidebar and click Predict")
